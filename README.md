@@ -87,9 +87,9 @@ Result of the base model on the test set (from `LogisticRegression_Base.ipynb`):
 | Method | ROC-AUC | PR-AUC | Recall | Precision |
 |---|---|---|---|---|
 | Persistence baseline | 0.722 | 0.250 | 0.472 | 0.472 |
-| Logistic regression | 0.807 | 0.177 | 0.806 | 0.113 |
 
-The base model ranks months better and finds more floods (116 of 144 against 68), but it raises many more false alarms (909 against 76). It does not clearly beat the baseline yet.
+
+
 
 ## Notebook order
 
