@@ -1,0 +1,26 @@
+{
+  "model": "XGBoost",
+  "best_params": {
+    "subsample": 1.0,
+    "scale_pos_weight": 10.19047619047619,
+    "reg_lambda": 5,
+    "n_estimators": 400,
+    "min_child_weight": 50,
+    "max_depth": 3,
+    "learning_rate": 0.01,
+    "colsample_bytree": 1.0
+  },
+  "threshold": 0.34251049160957336,
+  "recall_target": 0.8,
+  "cv_pr_auc_mean": 0.47638480790761867,
+  "cv_pr_auc_std": 0.0800824120866552,
+  "oof_recall": 0.800453514739229,
+  "oof_precision": 0.17098571082586583,
+  "share_flagged": 0.41833839918946303,
+  "watch_threshold": 0.34251049160957336,
+  "warning_threshold": 0.4373789131641388,
+  "warning_recall_target": 0.7,
+  "warning_oof_recall": 0.7006802721088435,
+  "warning_oof_precision": 0.2349809885931559,
+  "warning_share_flagged": 0.26646403242147926
+}

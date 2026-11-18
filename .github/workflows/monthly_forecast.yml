@@ -1,0 +1,63 @@
+# Monthly flood forecast: downloads the public data, runs src/update_forecast.py and commits the forecast files to the fadhili branch.
+# It runs on the 10th of every month, on the 20th (to replace preliminary rainfall with the final values),
+# and whenever the "Run workflow" button of the Actions tab is pressed.
+name: Monthly flood forecast
+
+on:
+  schedule:
+    - cron: '0 6 10 * *'
+    - cron: '0 6 20 * *'
+  workflow_dispatch:
+
+# the job needs to push the new forecast files
+permissions:
+  contents: write
+
+# two runs at the same time would try to commit the same files
+concurrency:
+  group: monthly-forecast
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # the workflow file lives on main (scheduled runs only start from the default branch),
+      # but the code, the model and the forecast files are on the fadhili branch
+      - name: Get the repository (fadhili branch)
+        uses: actions/checkout@v4
+        with:
+          ref: fadhili
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-forecast.txt
+
+      # only the packages that src/update_forecast.py needs (the app has its own app/requirements.txt)
+      - name: Install the packages
+        run: pip install -r requirements-forecast.txt
+
+      # downloads WFP rainfall and NDVI (HDX) and NOAA ONI and DMI, then makes the forecast.
+      # If a source has not published the newest month yet, the forecast is made for the newest month that all of them have.
+      - name: Download the data and make the forecast
+        run: python src/update_forecast.py --download
+
+      # only the forecast files are committed, and only if they changed
+      - name: Commit the forecast files if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/forecast/latest_forecast.csv app/forecast/archive
+          if git diff --cached --quiet; then
+            echo "The forecast did not change, nothing to commit."
+          else
+            month=$(python -c "import pandas as pd; d = pd.read_csv('app/forecast/latest_forecast.csv'); print(f'{d.forecast_year[0]}-{d.forecast_month[0]:02d}')")
+            git commit -m "Update flood forecast for $month"
+            # if someone pushed to fadhili while this job was running, put our commit on top of theirs
+            git pull --rebase origin fadhili
+            git push origin fadhili
+          fi
