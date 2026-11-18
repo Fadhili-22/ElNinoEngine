@@ -4,7 +4,7 @@ Moringa School Data Science capstone (DSF-PT15, Group 6): the machine learning e
 
 The model predicts whether a Kenyan county will flood **next month**, using the conditions observed this month: rainfall, soil moisture, vegetation, ocean climate signals and the terrain of the county. There is one row for each county and month (47 counties). The target is `flood_next_month` (1 = the county floods next month, 0 = it does not). Floods are rare (5% to 9% of the rows), so the models are judged with ROC-AUC, PR-AUC, recall and precision for floods and not with accuracy.
 
-The base model is logistic regression. It is compared with the persistence baseline, the simple rule "a county that flooded this month will flood next month". Random Forest and XGBoost will be added later as comparison models, on the same data and with the same measures.
+The base model is logistic regression. It is compared with the persistence baseline, the simple rule "a county that flooded this month will flood next month". A decision tree, Random Forest and XGBoost are compared with it, on the same data and with the same measures.
 
 ## Data sources
 
@@ -36,7 +36,10 @@ ML Engine/
 |   `-- test.csv              created by notebook 01 (2,820 rows)
 |-- notebooks/
 |   |-- 01_preprocessing.ipynb
-|   `-- LogisticRegression_Base.ipynb
+|   |-- 02_Climate_Drivers_ONI_DMI.ipynb
+|   |-- LogisticRegression_Base.ipynb
+|   |-- DecisionTree.ipynb
+|   `-- ElNinoModelling.ipynb
 |-- README.md
 `-- .gitignore
 ```
@@ -62,7 +65,7 @@ The split is by time and not random, which is different from a usual random spli
 
 ## The 24 features
 
-Chosen in the EDA notebook of the capstone project. The target (`flood_next_month`) and the baseline (`flood_this_month`) are never features.
+Chosen in the EDA notebook of the capstone project. The target (`flood_next_month`) is never a feature. The baseline (`flood_this_month`) is not one of the 24 features; `ElNinoModelling.ipynb` tries it as an extra feature (see "Limits").
 
 | Group | Features |
 |---|---|
@@ -91,14 +94,28 @@ Result of the base model on the test set (from `LogisticRegression_Base.ipynb`):
 
 The base model ranks months better and finds more floods (116 of 144 against 68), but it raises many more false alarms (909 against 76). It does not clearly beat the baseline yet.
 
+## Climate drivers (ONI and DMI)
+
+From `02_Climate_Drivers_ONI_DMI.ipynb`. The patterns are found on the training years (2002 to 2019) and checked on the test years.
+
+- The two rainy seasons hold half of the rows but 73% of the floods.
+- The Indian Ocean Dipole is the climate signal that matters most, and mainly in the short rains (floods in October to December). The flood rate in the short rains is 1.5% with a negative IOD, 10.0% with a neutral IOD and 17.4% with a positive IOD. The direction held in the test years.
+- ENSO gives a less clear picture: El Nino and La Nina short rains both have high flood rates, and the high La Nina rates come from two seasons (2007 and 2011).
+- In the models, `dmi` is the 6th most important of 26 features (mostly for the Random Forest) and `oni` is 25th. Season-specific versions of the two indices were tried and did not improve the PR-AUC, so they are not used.
+
+## Data note and next steps
+
+- **Flood labels in recent short rains seasons.** In October to December 2023, published reports describe floods in 36 of the 47 counties ([Kenya Red Cross, via ECHO, 27 November 2023](https://reliefweb.int/report/kenya/kenya-floods-update-ifrc-media-kenya-meteorological-department-echo-daily-flash-27-november-2023)), while our labels mark at most 8 counties in any month of that season. The 2019 short rains show a similar gap ([UNICEF, 24 November 2019](https://reliefweb.int/report/kenya/unicef-kenya-flood-situation-report-1-24-november-2019)). Some test months labelled "no flood" were therefore probably flood months, so the model is likely doing a little better than the test precision shows. A next step is to cross-check these seasons with Kenya Red Cross and NDOC reports.
+
 ## Notebook order
 
 Run the notebooks from top to bottom, in this order. Each notebook needs the files created by the one before it.
 
 1. `01_preprocessing.ipynb` (Data preparation): keeps 30 columns and the rows from July 2002 to December 2024, splits by time, fixes `county_flood_rate`, and writes `data/model_table.csv`, `data/train.csv` and `data/test.csv`.
-2. `LogisticRegression_Base.ipynb` (Modelling + Evaluation): the base model (`StandardScaler` and logistic regression with balanced class weights), evaluation on the test set and comparison with the persistence baseline. Reads `data/train.csv` and `data/test.csv`.
-
-Random Forest and XGBoost notebooks will be added later.
+2. `02_Climate_Drivers_ONI_DMI.ipynb` (Data understanding + Evaluation): how the El Nino index (ONI) and the Indian Ocean Dipole index (DMI) relate to floods in each rainy season, whether the pattern held in the test years, how much the models use the two indices, and a check of the flood labels in two strong positive IOD seasons. Reads `data/train.csv` and `data/test.csv`.
+3. `LogisticRegression_Base.ipynb` (Modelling + Evaluation): the base model (`StandardScaler` and logistic regression with balanced class weights), evaluation on the test set and comparison with the persistence baseline. Reads `data/train.csv` and `data/test.csv`.
+4. `DecisionTree.ipynb` (Modelling + Evaluation): a decision tree tuned with year-based cross-validation and compared with the two baselines.
+5. `ElNinoModelling.ipynb` (Modelling + Evaluation): logistic regression, Random Forest and XGBoost on the 24 features, then again with `flood_this_month` and `flood_last_month` added as features.
 
 Paths inside the notebooks are relative to the `notebooks/` folder (for example `../data/train.csv`), so open the notebooks from that folder.
 
