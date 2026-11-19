@@ -1,0 +1,45 @@
+=== KENYA FLOOD EARLY WARNING PROTOCOLS ===
+
+SECTION 1: RISK LEVELS AND ACTIONS
+- LOW RISK (0-30%): No immediate action. Continue normal activities. Monitor local weather reports weekly.
+- MODERATE RISK (30-60%): Prepare emergency kits. Clear drainage around homes. Move livestock to slightly elevated ground. Confirm evacuation routes with family. Store clean water.
+- HIGH RISK (60-85%): Immediate preparation. Move valuables and documents to higher floors. Stock 3 days of water and non-perishable food. Charge phones and power banks. Alert vulnerable neighbors (elderly, children, disabled).
+- EXTREME RISK (85-100%): Evacuate low-lying areas immediately. Do not wait for official orders if you are near a riverbank or in a known flood zone. Move to designated evacuation centers.
+
+SECTION 2: HEALTH AND MEDICAL SAFETY
+- Waterborne Diseases: Floodwater is often contaminated with sewage. Cholera, typhoid, and dysentery are high risks after floods.
+- Water Treatment: Boil all drinking water for at least 5 minutes. If boiling is impossible, use chlorine tablets or water purification drops.
+- First Aid: Keep a waterproof first aid kit. Do not allow open wounds to touch floodwater. If exposed, wash immediately with clean water and soap.
+- Hypothermia: Floods are often cold. Keep dry blankets and warm clothing in your emergency kit.
+- Mosquitoes: Standing water breeds malaria. Drain all standing water around your home and use mosquito nets.
+
+SECTION 3: TRAVEL AND DRIVING
+- Driving: Never drive through flooded roads. Just 15cm of moving water can knock an adult down; 30cm can sweep away a car. Turn around, don't drown.
+- Walking: Do not walk through moving water. Use a stick to check the firmness of the ground ahead of you.
+- Bridges: Avoid crossing flooded bridges or riverbanks. Water levels can rise in minutes.
+- Public Transport: If you are on a bus or matatu and water starts rising, exit immediately and move to higher ground. Do not wait for the driver.
+
+SECTION 4: LIVESTOCK AND AGRICULTURE
+- Livestock: Move animals to higher ground before water rises. Do not tie them to posts where they may drown. 
+- Feed: Store animal feed in elevated, waterproof containers. Flooded crops should not be eaten.
+- Poultry: Move chickens and goats into elevated coops or dry rooms.
+- Post-Flood: Check animals for signs of disease before returning them to grazing areas. Contact a local vet if you notice unusual symptoms.
+
+SECTION 5: HOME PREPARATION AND SAFETY
+- Electricity: Turn off electricity at the main breaker before water reaches outlets. Do not touch electrical appliances if you are standing in water.
+- Documents: Secure important documents (ID, land title, medical records) in waterproof bags or sealed plastic containers.
+- Emergency Kit: Pack a "Go-Bag" with: flashlight, batteries, radio, 3 days of water, non-perishable food, first aid kit, and copies of documents.
+- Structural: Move furniture and valuables to the highest floor. Clear gutters and drains around your house.
+
+SECTION 6: MODEL AND DATA INTERPRETATION
+- ONI (Oceanic Niño Index): Positive values (El Niño) correlate with heavy rains and flooding in Kenya's short rains season (Oct-Dec). Negative values (La Niña) bring drought.
+- DMI (Dipole Mode Index): Negative DMI often brings floods to East Africa. Positive DMI brings drought.
+- Flood_this_month: The strongest predictor. If a county is currently flooded, the risk of continued flooding next month is very high.
+- Historical Rate: Shows how often a county has flooded in the past 20 years. High historical rates mean the county is naturally flood-prone.
+
+SECTION 7: KENYA-SPECIFIC RESOURCES AND CONTACTS
+- Kenya Meteorological Department (KMD): Publishes weekly and seasonal forecasts. Listen to local radio for updates.
+- National Disaster Management Authority (NDMA): Coordinates county-level emergency response.
+- Kenya Red Cross: Provides emergency shelters and first aid. Hotline: 1199 (toll-free).
+- Alerts via SMS: Register with your county's early warning system. 
+- NDMA County Offices: Reach out to your local county commissioner's office for evacuation routes and shelter locations.

@@ -1,0 +1,16 @@
+streamlit==1.38.0
+pandas==2.2.2
+numpy==1.26.4
+xgboost==2.1.1
+scikit-learn==1.5.1
+joblib==1.4.2
+python-dotenv==1.0.1
+langchain==0.2.16
+langchain-groq==0.1.9
+langchain-community==0.2.16
+langchain-huggingface==0.0.3
+faiss-cpu==1.8.0
+sentence-transformers==3.0.1
+plotly
+langchain-core
+langchainhub

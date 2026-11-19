@@ -1,0 +1,28 @@
+# Environment variables (CRITICAL: Keeps your API keys secret)
+.env
+.env.*
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Streamlit secrets (if you ever use a secrets.toml file)
+.streamlit/secrets.toml
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# macOS / Windows system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Large local data files (optional - uncomment if you don't want to push CSVs)
+# *.csv
+# artifacts/*.pkl
