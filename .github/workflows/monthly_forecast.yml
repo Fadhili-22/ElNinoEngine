@@ -1,12 +1,17 @@
-# Monthly flood forecast: downloads the public data, runs src/update_forecast.py and commits the forecast files to the fadhili branch.
-# It runs on the 10th of every month, on the 20th (to replace preliminary rainfall with the final values),
-# and whenever the "Run workflow" button of the Actions tab is pressed.
+# Monthly flood forecast: downloads the public data, runs src/update_forecast.py and commits the forecast files to the main branch.
+# When it runs (16:17 UTC = 19:17 in Nairobi; the afternoon is after NOAA posted the DMI on 5 Nov, and the odd minute avoids the busy start of the hour):
+#   the 5th : WFP posts the last 10 days of the month on about the 3rd, NOAA posts the ONI by the 5th and the DMI on about the first Thursday, so most months everything is ready
+#   the 7th and the 10th: the same job again, to catch a source that was late (a run that finds nothing new makes no commit)
+#   the 25th: WFP replaces the preliminary rainfall of the last month with the final CHIRPS values on about the 23rd
+# It also runs whenever the "Run workflow" button of the Actions tab is pressed.
 name: Monthly flood forecast
 
 on:
   schedule:
-    - cron: '0 6 10 * *'
-    - cron: '0 6 20 * *'
+    - cron: '17 16 5 * *'
+    - cron: '17 16 7 * *'
+    - cron: '17 16 10 * *'
+    - cron: '17 16 25 * *'
   workflow_dispatch:
 
 # the job needs to push the new forecast files
@@ -23,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      # the workflow file lives on main (scheduled runs only start from the default branch),
-      # but the code, the model and the forecast files are on the fadhili branch
-      - name: Get the repository (fadhili branch)
+      # everything (this file, the code, the model, the forecast files and the app) is on main, which is also the branch
+      # that Streamlit Community Cloud deploys, so a new forecast commit refreshes the app by itself
+      - name: Get the repository (main branch)
         uses: actions/checkout@v4
         with:
-          ref: fadhili
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -57,7 +62,7 @@ jobs:
           else
             month=$(python -c "import pandas as pd; d = pd.read_csv('app/forecast/latest_forecast.csv'); print(f'{d.forecast_year[0]}-{d.forecast_month[0]:02d}')")
             git commit -m "Update flood forecast for $month"
-            # if someone pushed to fadhili while this job was running, put our commit on top of theirs
-            git pull --rebase origin fadhili
-            git push origin fadhili
+            # if someone pushed to main while this job was running, put our commit on top of theirs
+            git pull --rebase origin main
+            git push origin main
           fi

@@ -10,6 +10,8 @@ app/data/*
 !models/xgboost_settings.json
 !app/data/app_predictions.csv
 !app/data/kenya_counties_simple.geojson
+# rainfall and soil numbers per county and month for the scenario page (no flood records), made by app/make_scenario_reference.py
+!app/data/scenario_reference.csv
 
 # downloads of src/update_forecast.py (public files, but large and always re-downloadable)
 data/live/
@@ -24,3 +26,6 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+
+# spreadsheets made from the flood records (EM-DAT licence: team only)
+*.xlsx
