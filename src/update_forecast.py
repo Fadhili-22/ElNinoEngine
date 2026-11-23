@@ -308,6 +308,20 @@ def newest_month(rows, column=None, how_many=47):
     return f'{year}-{month:02d}'
 
 
+def same_numbers(old, new):
+    # True if two forecast tables hold the same values. Decimal columns may differ by rounding noise (about 1e-14: Windows and Linux add
+    # numbers in a slightly different order), which is not a change. An exact comparison made every run on GitHub look like a new forecast
+    if list(old.columns) != list(new.columns) or len(old) != len(new):
+        return False
+    for column in old.columns:
+        if pd.api.types.is_float_dtype(old[column]) and pd.api.types.is_float_dtype(new[column]):
+            if not np.allclose(old[column], new[column], rtol=0, atol=1e-9, equal_nan=True):
+                return False
+        elif not old[column].equals(new[column]):
+            return False
+    return True
+
+
 def save_forecast(out):
     # writes the latest forecast and the archive copy. Returns True if a file changed.
     os.makedirs(ARCHIVE_FOLDER, exist_ok=True)
@@ -326,7 +340,7 @@ def save_forecast(out):
             print('the new forecast is for an older month than latest_forecast.csv, so the files are not changed')
             return False
         # the same numbers as before: nothing to write (the date it was generated is not a change)
-        if 'generated_on' in old.columns and old.drop(columns='generated_on').equals(new.drop(columns='generated_on')):
+        if 'generated_on' in old.columns and same_numbers(old.drop(columns='generated_on'), new.drop(columns='generated_on')):
             print('the forecast is the same as latest_forecast.csv, no change')
             new_text = None
     if new_text is not None:
