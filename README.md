@@ -8,7 +8,7 @@ Four models were built and compared on the same data and the same cross-validati
 
 **Final model: XGBoost, with a threshold of 0.343** (chosen for 80% recall in cross-validation). On the 2020 to 2024 test set it has a recall of 0.979 and a precision of 0.120, with 1,172 warnings in 2,820 months. The random forest is a close second. See "Results" and "Which model we go with".
 
-The dashboard uses two alert levels from the same model: **Watch** (threshold 0.343, about 80% of floods caught in cross-validation, "be ready") and **Warning** (threshold 0.437, about 70% caught, a bigger share of real alerts, "act now"). See "Watch and Warning levels" and "Dashboard app".
+The app uses two alert levels from the same model: **Watch** (threshold 0.343, about 80% of floods caught in cross-validation, "be ready") and **Warning** (threshold 0.437, about 70% caught, a bigger share of real alerts, "act now"). See "Watch and Warning levels" and "The app".
 
 ## The story in plain English
 
@@ -17,7 +17,7 @@ The dashboard uses two alert levels from the same model: **Watch** (threshold 0.
 3. **Two alert levels.** The model gives each county a risk score. A **Watch** ("be ready") is a risk above 0.34, which catches about 80% of the floods in our cross-validation. A **Warning** ("act now") is a risk above 0.44, which catches about 70% of them. The price of catching most floods is many false alarms.
 4. **From a backtest to a real forecast.** In the backtest we know the flood records, and the strongest input of the model is "did this county already flood this month?". In real life nobody publishes flood records at the end of the month, so a live forecast has to say "we do not know" (we use 0). That makes the live forecast less accurate than the backtest, and we measured by how much (see "Live accuracy").
 5. **Does it keep working without that input?** We trained a second model without it (`XGBoost_no_flood_input.ipynb`). It found more floods, but only by raising many more alerts, and it ranked the counties no better, so we kept the first model.
-6. **A forecast every month.** A GitHub Action downloads the newest public data every month, makes the forecast and saves it, and the dashboard shows it. The dashboard also replays the live forecast on 2020 to 2024 ("Would it have warned us?"), and lets you change rainfall and El Niño to see how the model reacts ("What if?").
+6. **A forecast every month.** A GitHub Action downloads the newest public data in the first days of every month, makes the forecast and saves it, and the app shows it. The forecast for a month is therefore ready about a week into that month, so the notice is about three weeks, not four (see "Limits of the live forecast"). The app also replays the live forecast on 2020 to 2024 ("How accurate is it?"), and lets you change the rain and El Niño to see how the model reacts ("Try a scenario").
 
 ## Data sources
 
@@ -69,8 +69,11 @@ ML Engine/
 |   |-- county_adjacency.csv      which counties touch (copy of the training reference file)
 |   |-- county_static.csv         static features, flood rate and training ranges of the 47 counties
 |   `-- soil_climatology.csv      mean soil moisture of each county and month (the stand-in)
-|-- app/                      the Streamlit dashboard (see "Dashboard app")
-|   |-- app.py
+|-- app/                      the Streamlit app (see "The app")
+|   |-- app.py                    the entry point: page settings, the menu and the four pages
+|   |-- common.py                 the helpers shared by the pages (style, maps, model scoring)
+|   |-- views/                    the four pages: home.py, live.py, scenario.py, accuracy.py
+|   |-- make_scenario_reference.py   makes data/scenario_reference.csv
 |   |-- requirements.txt          the packages of the app only (used by Streamlit Community Cloud)
 |   |-- .streamlit/config.toml    the theme
 |   |-- forecast/
@@ -78,6 +81,7 @@ ML Engine/
 |   |   `-- archive/<forecast month>.csv   one file for every forecast month, for scoring later
 |   `-- data/                     created by notebook 06
 |       |-- app_predictions.csv
+|       |-- scenario_reference.csv    rain and soil numbers of each county and month, for the scenario page (no flood records)
 |       `-- kenya_counties_simple.geojson
 |-- README.md
 |-- requirements.txt
@@ -224,7 +228,7 @@ Run the notebooks from top to bottom, in this order.
 5. `XGBoost.ipynb`: same steps, plus the feature importance.
 6. `XGBoost_no_flood_input.ipynb`: XGBoost without `flood_this_month` (see "Which model we go with"). Saves `models/xgboost_no_flood.joblib`; the other model files are not touched.
 7. `05_model_comparison.ipynb`: loads the four models, settings and thresholds from `models/`, chooses the final model by CV PR-AUC, and compares them on the test set, with the baselines and year by year.
-8. `06_app_predictions.ipynb`: loads the final XGBoost model, predicts the risk of next month for every county from January 2020 to December 2024 (with the real flood records, and again with the inputs of the live forecast), and writes the two files of the dashboard to `app/data/`. It needs the county shapes file of the data pipeline (`../../El Nino Predictor/data/reference/kenya_counties_full.geojson`), which it only reads.
+8. `06_app_predictions.ipynb`: loads the final XGBoost model, predicts the risk of next month for every county from January 2020 to December 2024 (with the real flood records, and again with the inputs of the live forecast), and writes the two files of the app to `app/data/`. It needs the county shapes file of the data pipeline (`../../El Nino Predictor/data/reference/kenya_counties_full.geojson`), which it only reads.
 
 Paths inside the notebooks are relative to the `notebooks/` folder (for example `../data/train.csv`), so open the notebooks from that folder.
 
@@ -255,15 +259,18 @@ jupyter nbconvert --to notebook --execute --inplace XGBoost.ipynb
 jupyter nbconvert --to notebook --execute --inplace 05_model_comparison.ipynb
 ```
 
-## Dashboard app
+## The app
 
-`app/app.py` is a Streamlit dashboard with three pages (a switch at the top). A page whose file is missing is left out of the switch.
+`app/app.py` is a Streamlit app with four pages and a menu at the top. It is written in plain language for county staff, and the technical details are at the bottom of each page ("Details for experts").
 
-1. **Latest forecast** (made by `src/update_forecast.py`): the forecast for next month. A banner says that this is a live forecast and how much less accurate it is than the backtest, with a pill for every stand-in input (flood records assumed none, soil moisture climatology, runoff and discharge ranks neutral, rainfall preliminary). It shows a strip of four numbers (Warning, Watch, no alert, highest risk), a **top 10 list of the highest-risk counties**, the map shaded by risk with amber and red outlines for Watch and Warning, and a county card (risk, a bar with the two lines, the inputs of the forecast). Because almost every county can be on Warning in a strong El Niño, the page then says to read the ranking. An optional "manual override" lets you enter floods you know about; the risk of those counties is recalculated with a flood recorded, and they are marked as a manual entry, not data.
-2. **Would it have warned us? (2020–2024)**: the live forecast replayed on the 60 months that the model was not trained on, with the same inputs the live forecast has (flood records unknown). A plain summary at the top: floods recorded, how many had a Watch or Warning the month before, missed floods, and the average number of alerts per month. A month box and a map where the **colour is the alert level**, a dot on the floods that were caught and a cross on the floods that were missed (a coloured county without a mark is a false alarm). The county card shows its risk over 12 months with the flood months marked, and a list shows the floods of the chosen month. This page uses the flood records, so it can only be in a private deployment (see "Data licence").
-3. **What if? (scenario explorer)**: pick a county, and move sliders for the rainfall of the month, the rainfall of the month before, ONI and DMI. Every slider starts at the live value of the county and stops at the limits of the training years (the range is shown), because the model has not seen anything outside it. The "% of normal" rainfall is worked out again from the rainfall slider, and every other input stays fixed (the page says so). It shows the risk, the level, the change from the live forecast, and how the risk of the county changes with ONI. A second control moves ONI for all 47 counties and redraws the map. This is the response of the model, not a forecast. It loads `models/xgboost.joblib`.
+1. **Home:** what the app is, a live preview (how many counties are at high risk in the forecast month and the three highest), the numbers of the backtest ("about 9 in 10 past floods warned") and links to the other pages.
+2. **Live forecast:** the forecast for the month after the newest data month (made by `src/update_forecast.py`). Pick a county to see its level (Low, Medium or High, which are No alert, Watch and Warning), its rank among the 47 counties, a plain explanation of why it is high or low, a map shaded by risk and a top 10 list. Because almost every county can be on Warning in a strong El Niño, the page says to read the ranking. "Details for experts" has the risk score, the two lines, every input of the forecast, a pill for every stand-in (flood records assumed none, soil moisture climatology, runoff and discharge ranks neutral, rainfall preliminary) and an optional manual override: you can enter counties that you know flooded this month, and their risk is recalculated with a flood recorded (they are marked as a manual entry, not data).
+3. **Try a scenario:** the response of the model, not a forecast. *Simple* mode has three choices: flooding now (yes or no), El Niño (cooler, normal or like now) and the rain across the region (half, usual or double). The result is in words. *Advanced* mode has a slider for every input the model reads (rain, rain of the two months before, rain in the neighbouring counties, ONI, DMI, the month), the risk score, and a curve of how the risk of the county changes with ONI. In both modes the rain of the county and the rain of its neighbours move together, because the neighbour rain is the rainfall input the model really uses; the rain of one county alone barely changes the score. Everything else stays at the live value, and the sliders stop at the limits of the training years. It loads `models/xgboost.joblib`.
+4. **How accurate is it?:** the live forecast replayed on the 60 months that the model was not trained on, with the same inputs the live forecast has (flood records unknown). Three headline numbers (floods warned in time, floods missed, alerts that were false alarms), a month slider and a map where the colour is the outcome (warned in time, missed, warned but no flood, quiet), and a panel for the chosen county with its risk over 12 months and the flood months marked. This page uses the flood records, so it can only be in a private deployment (see "Data licence").
 
-The app does not train anything. It reads `app/forecast/latest_forecast.csv` (page 1 and 3, made by `src/update_forecast.py`), `app/data/app_predictions.csv` and `app/data/kenya_counties_simple.geojson` (page 2 and the map shapes, made by `notebooks/06_app_predictions.ipynb`), and the model for page 3.
+The risk score is a relative score, **not a probability**: the model is tuned to catch floods, so its scores run far above the real flood frequency. The app says so on each page.
+
+The app does not train anything. It reads `app/forecast/latest_forecast.csv` (made by `src/update_forecast.py`), `app/data/app_predictions.csv` and `app/data/kenya_counties_simple.geojson` (made by `notebooks/06_app_predictions.ipynb`), `app/data/scenario_reference.csv` (made by `app/make_scenario_reference.py`) and the model.
 
 **How to run** (after `pip install -r requirements.txt`), from the `ML Engine` folder:
 
@@ -288,7 +295,7 @@ python src/update_forecast.py --make-reference   # rebuild src/county_static.csv
 ```
 
 - **Downloads** (public, into `data/live/`, which is git-ignored): WFP rainfall (CHIRPS) and NDVI from HDX, NOAA PSL ONI and DMI, and the NOAA CPC ONI file, which has the newest months. A failed download is tried 3 times; if it still fails, an older copy of the file is used with a warning, and with no older copy the script stops with an error.
-- **Which month:** the forecast is made for the newest month that all the sources have (for example, if NOAA has not published the ONI of October yet, the forecast uses September data and forecasts October). The data month and forecast month are in every row of the csv, and `newest_rainfall`, `newest_ndvi`, `newest_oni` and `newest_dmi` show which source was the limit. If a new run would give an older month than the file that is already there, nothing is changed. If the numbers are the same as before, nothing is changed either (so the repository has no empty commits).
+- **Which month:** the forecast is made for the newest month that all the sources have (for example, if NOAA has not published the ONI of October yet, the forecast uses September data and forecasts October). The data month and forecast month are in every row of the csv, and `newest_rainfall`, `newest_ndvi`, `newest_oni` and `newest_dmi` show which source was the limit. If a new run would give an older month than the file that is already there, nothing is changed. If the numbers are the same as before, nothing is changed either (differences below 1e-9, which are only rounding noise between Windows and Linux, are ignored), so the repository has no empty commits.
 - **Features:** the same steps as the training pipeline (monthly rainfall, lags, % of normal against 2000–2019, neighbour rainfall, NDVI % of normal, ONI shifted one month, DMI, month sine and cosine). `--parity` rebuilds 2000–2025 from the raw files of the training pipeline (which must be next to this folder) and compares every feature with `data/model_table_full.csv`; the largest difference is 5e-8 (csv rounding).
 - **Stand-ins:** the model needs four inputs with no live data. `flood_this_month` is 0 (flood records are not known yet), `soil_moisture_l1` is the training mean of the county and month (`src/soil_climatology.csv`), and `runoff_rank` and `discharge_rank` are 0.5. The app shows a pill for each.
 - **What it needs:** `models/xgboost.joblib`, `models/xgboost_settings.json` and the three csv files in `src/`. It does not need `data/train.csv`. The static features, the flood rate of each county and the training ranges are in `src/county_static.csv`; run `--make-reference` again only if the model or the training data change.
@@ -302,17 +309,19 @@ The live forecast does not know the flood records, so it is less accurate than t
 | Backtest: real flood records (not possible live) | 0.979 | 0.903 | 0.120 | 0.161 |
 | **Live: records unknown, stand-ins for soil, runoff and river discharge** | **0.882** | **0.778** | 0.110 | 0.144 |
 
-The dashboard page "Would it have warned us?" shows this replay: of 144 floods recorded in 60 months, 127 (88%) had a Watch or Warning the month before, 112 (78%) had a Warning, and 17 were missed. To do that the forecast raised 19 alerts a month on average (13 of them Warnings) among 47 counties, and 1,027 of the 1,154 alerts (89%) were followed by no recorded flood. Planning with the cross-validation recall (80% and 70%) is more careful than reading the test numbers.
+The app page "How accurate is it?" shows this replay: of 144 floods recorded in 60 months, 127 (88%) had a Watch or Warning the month before, 112 (78%) had a Warning, and 17 were missed. To do that the forecast raised 19 alerts a month on average (13 of them Warnings) among 47 counties, and 1,027 of the 1,154 alerts (89%) were followed by no recorded flood. Planning with the cross-validation recall (80% and 70%) is more careful than reading the test numbers.
 
 ## Limits of the live forecast
 
 - **Flood records arrive late and are incomplete.** The newest months of any record are the least complete, so some alerts counted as false alarms may be floods that were never recorded. The forecasts cannot be scored until the records of the forecast month exist, which can take months. The monthly job keeps an archive for that.
-- **It depends a lot on El Niño.** ONI, DMI and the month of the year carry 34% of the gain of the model (and the flood records of the data month, which are unknown live, carry another 43%), and the three of them are the same for every county. In a strong El Niño the risk is high almost everywhere: for November 2026, 46 of 47 counties are on Warning. The alert level then hardly separates the counties, so use the risk score and the top 10 list. The "What if?" page shows how the risk of a county changes with ONI; it is a step, not a smooth line.
+- **It depends a lot on El Niño.** ONI, DMI and the month of the year carry 34% of the gain of the model (and the flood records of the data month, which are unknown live, carry another 43%), and the three of them are the same for every county. In a strong El Niño the risk is high almost everywhere: for November 2026, 46 of 47 counties are on Warning. The alert level then hardly separates the counties, so use the risk score and the top 10 list. The "Try a scenario" page shows how the risk of a county changes with ONI; it is a step, not a smooth line.
 - **ONI is near the top of what the model has seen.** The live ONI (2.46) is close to the largest value of the training years (2.75), and the training years have only 4 months (November 2015 to February 2016, one El Niño) with an ONI of 2.4 or more. The model is extrapolating from a single event, and in the model without `flood_this_month`, shuffling the ONI slightly improved the PR-AUC on the test years.
 - **County level only.** The forecast is for a whole county. It cannot say where in the county, and the counties differ a lot in size.
 - **Stand-ins.** Soil moisture, runoff and river discharge have no live data yet (an Earth Engine and a GloFAS pipeline would be needed). They carry 1.2% of the gain of the model, and replacing them with the stand-ins did not lower the test recall, so this is the smallest of the limits.
-- **Flood records of the data month are not known.** This is the biggest cost: 10 to 12 points of recall (0.979 to 0.882 at Watch, 0.903 to 0.778 at Warning) (see "Live accuracy"). The manual override of the app is the only way to add them.
+- **Flood records of the data month are not known.** This is the biggest cost: 10 to 12 points of recall (0.979 to 0.882 at Watch, 0.903 to 0.778 at Warning) (see "Live accuracy"). The manual override on the Live forecast page (Details for experts) is the only way to add them.
 - **Preliminary rainfall.** The newest CHIRPS months are preliminary; the run of the 25th replaces them with the final values when WFP has published them. The new DMI file differs from the one of the training by up to 0.07, with no visible effect.
+- **The real notice is about three weeks.** The forecast is for the month after the data month, but it can only be made once the data of that month are published: WFP posts the last 10 days of a month on about the 3rd, NOAA posts the ONI by the 5th and the DMI on about the first Thursday. The job runs from the 5th, so the forecast for a month is ready about a week into that month. Longer notice would need forecast inputs (for example rainfall outlooks) and a model trained on them.
+- **No national weather service data.** Rainfall, vegetation and ocean data are satellite and public products. Kenya Meteorological Department station data and outlooks would improve local accuracy and notice, but they need a formal request and a history for every county, so they are a next step.
 - **One model, one month ahead.** There is no forecast for two or three months ahead.
 
 ## Monthly update with GitHub Actions
@@ -327,11 +336,11 @@ The dashboard page "Would it have warned us?" shows this replay: of 144 floods r
 - **GitHub pauses scheduled workflows** in a repository with no activity for 60 days. The monthly commits count as activity, but if the job is ever off for a long time, enable it again in the Actions tab.
 - **Test it first by hand:** push the repository, then run the workflow once from the Actions tab and look at the commit it makes.
 
-The same steps were tested on this computer, in a clean copy with only the files of the repository (no `data/train.csv`, no `data/live`), with a local repository as the remote. The cases tested: a first run (it commits the forecast), a second run with nothing new (nothing is committed), a newest month that is not published (October rainfall and NDVI removed: it forecasts October from September data, then November when the data arrive, and the archive keeps both), a source that goes back to an older month (the newer forecast is kept), a source that is behind (DMI without October: the forecast uses September data and `newest_dmi` says so), and a failed download with and without an older copy. The Ubuntu run itself (the installation of the packages and the push to GitHub) could only be tested by running the workflow once on GitHub.
+The same steps were tested on this computer, in a clean copy with only the files of the repository (no `data/train.csv`, no `data/live`), with a local repository as the remote. The cases tested: a first run (it commits the forecast), a second run with nothing new (nothing is committed), a newest month that is not published (October rainfall and NDVI removed: it forecasts October from September data, then November when the data arrive, and the archive keeps both), a source that goes back to an older month (the newer forecast is kept), a source that is behind (DMI without October: the forecast uses September data and `newest_dmi` says so), and a failed download with and without an older copy. The Ubuntu run itself (the installation of the packages and the push to GitHub) was tested on 23 November 2026 by running the workflow on GitHub: it downloaded the data, made the forecast and committed it, and a second run on `main` made no commit because nothing had changed. The first run with a new month of data is expected on 5 to 7 December 2026.
 
 ## Deployment on Streamlit Community Cloud (private)
 
-The plan: the repository stays **private** and the app is **invite-only** (viewers are added by email). Nothing here has been deployed or pushed yet. Do these steps in order.
+The repository is **private** and the app is **invite-only** (viewers are added by email). It was deployed on 23 November 2026 from the `main` branch with the steps below. They are kept here to redeploy it.
 
 **Before the first push**
 
@@ -346,19 +355,19 @@ The plan: the repository stays **private** and the app is **invite-only** (viewe
 
 **Deploy the app**
 
-6. Go to <https://share.streamlit.io> and sign in with GitHub. When it asks, allow access to your **private** repositories.
+6. Go to <https://share.streamlit.io> and sign in with GitHub. Streamlit only sees public repositories at first. To give it the private ones, click your user name (top left) → **Settings** → **Linked accounts** → under **Source control** click **Connect here** and **Authorize streamlit**. You must be an admin of the repository.
 7. Click **Create app** and choose to deploy from an existing repository. Set: repository = this repository, branch = `main`, main file path = `app/app.py`.
 8. Open **Advanced settings** and choose **Python 3.11**. No secrets are needed.
 9. Click **Deploy**. The first start installs `app/requirements.txt` (Streamlit Cloud uses the requirements file next to the main file), which takes a few minutes.
-10. Make it invite-only: in the app's **Settings → Sharing**, set the app to private ("only specific people can view this app") and add the email addresses of the viewers. They sign in with that email. Check the current limits of the free plan for private apps on the Streamlit Community Cloud documentation.
+10. Make it invite-only: in the app's **Settings → Sharing**, set the app to private ("only specific people can view this app") and add the email addresses of the viewers. They sign in with that email. The free plan allows one private app at a time, and its limits can change, so check the Streamlit Community Cloud documentation.
 11. Open the link in a private window, signed out, and check that the app asks for a login.
 
 **After that**
 
-- Every time the monthly job commits a new forecast, Streamlit Community Cloud redeploys the app from the new commit by itself, so the dashboard follows the repository.
+- Every time the monthly job commits a new forecast to `main`, Streamlit Community Cloud redeploys the app from the new commit by itself, so the app follows the repository.
 - If the model or the training data change: rerun `python src/update_forecast.py --make-reference`, rerun notebook 06, and commit the changed files in `src/`, `models/` and `app/data/`.
 
-**A public deployment** is not possible with this version. The page "Would it have warned us?" uses the flood records of the forecast month (`app/data/app_predictions.csv`), which include EM-DAT data, and the terms of EM-DAT do not allow redistributing it or databases derived from it. A public version would need that page rebuilt from the public flood labels only (DesInventar, the Global Flood Database and the Dartmouth Flood Observatory), and the safest way is to retrain the model on those labels as well, because the current model and the flood rate of each county were made with labels that include EM-DAT. The two other pages (the live forecast and the scenario explorer) show only the model output.
+**A public deployment** is not possible with this version. The page "How accurate is it?" uses the flood records of the forecast month (`app/data/app_predictions.csv`), which include EM-DAT data, and the terms of EM-DAT do not allow redistributing it or databases derived from it. A public version would need that page rebuilt from the public flood labels only (DesInventar, the Global Flood Database and the Dartmouth Flood Observatory), and the safest way is to retrain the model on those labels as well, because the current model and the flood rate of each county were made with labels that include EM-DAT. The other pages (home, live forecast and scenario) show only the model output.
 
 ## Next steps
 
@@ -372,7 +381,7 @@ The plan: the repository stays **private** and the app is **invite-only** (viewe
 
 ## Requirements
 
-Python 3.11 and the exact package versions in `requirements.txt` (the notebooks were run with Python 3.11.18). Jupyter is also needed to run the notebooks. Models saved with other versions of scikit-learn or XGBoost may not load. `app/requirements.txt` has only the packages that the app needs (it also loads the model for the scenario page), and is the file that Streamlit Community Cloud installs. The GitHub Action installs `requirements.txt`.
+Python 3.11 and the exact package versions in `requirements.txt` (the notebooks were run with Python 3.11.18). Jupyter is also needed to run the notebooks. Models saved with other versions of scikit-learn or XGBoost may not load. `app/requirements.txt` has only the packages that the app needs (it also loads the model for the scenario page), and is the file that Streamlit Community Cloud installs. The GitHub Action installs `requirements-forecast.txt` (only what `src/update_forecast.py` needs).
 
 ## Data licence
 
